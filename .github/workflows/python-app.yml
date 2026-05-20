@@ -1,0 +1,46 @@
+name: Pipeline CI/CD FastAPI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
+env:
+  IMAGE_NAME: api-fastapi-app 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Build da Imagem
+        run: docker build -t ${{ env.IMAGE_NAME }} .
+
+  deploy_homolog:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: homologacao
+    steps:
+      - name: Deploy Automático em Homologação
+        run: |
+          echo "Iniciando deploy automático na porta 8080..."
+
+  Deploy_Producao:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: producao 
+    steps:
+      - name: Deploy Controlado em Produção
+        uses: appleboy/ssh-action@v0.1.6
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Aprovação do GitHub Environment recebida!"
+            echo "Iniciando deploy da imagem ${{ env.IMAGE_NAME }} no ambiente de Produção..."
